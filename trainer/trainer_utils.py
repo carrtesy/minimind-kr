@@ -1,5 +1,5 @@
 """
-训练工具函数集合
+학습 유틸리티 함수 모음
 """
 import os
 import sys
@@ -43,7 +43,7 @@ def get_lr(current_step, total_steps, lr):
 
 def init_distributed_mode():
     if int(os.environ.get("RANK", -1)) == -1:
-        return 0  # 非DDP模式
+        return 0  # 비 DDP (분산) 모드
 
     dist.init_process_group(backend="nccl")
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -104,14 +104,14 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         os.replace(resume_tmp, resume_path)
         del state_dict, resume_data
         torch.cuda.empty_cache()
-    else:  # 加载模式
+    else:  # 로드 모드
         if os.path.exists(resume_path):
             ckp_data = torch.load(resume_path, map_location='cpu')
             saved_ws = ckp_data.get('world_size', 1)
             current_ws = dist.get_world_size() if dist.is_initialized() else 1
             if saved_ws != current_ws:
                 ckp_data['step'] = ckp_data['step'] * saved_ws // current_ws
-                Logger(f'GPU数量变化({saved_ws}→{current_ws})，step已自动转换为{ckp_data["step"]}')
+                Logger(f'GPU 수 변경 ({saved_ws}→{current_ws}), step이 자동으로 {ckp_data["step"]}(으)로 변환되었습니다')
             return ckp_data
         return None
 
@@ -168,7 +168,7 @@ class LMForRewardModel:
     def get_score(self, messages, response):
         history_text = "\n".join([f"{m['role']}: {m['content']}" for m in messages[:-1]])
         last_query = messages[-1]['content'] if messages else ""
-        message_context = f"{history_text}\n以上是对话历史。我的新问题是：\n{last_query}" if history_text else last_query
+        message_context = f"{history_text}\n위는 대화 이력입니다. 저의 새로운 질문은:\n{last_query}" if history_text else last_query
         eval_messages = [
             {"role": "user", "content": message_context},
             {"role": "assistant", "content": response}

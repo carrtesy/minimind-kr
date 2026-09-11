@@ -7,29 +7,29 @@ from datasets import load_dataset, Features, Sequence, Value
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def pre_processing_chat(conversations, add_system_ratio=0.2):
-    # tool use 数据完整保留不做处理
+    # tool use 데이터는 그대로 보존하고 별도 처리하지 않음
     if any(conv.get('tools') for conv in conversations): return conversations
 
     SYSTEM_PROMPTS = [
-        "你是一个知识丰富的AI，尽力为用户提供准确的信息。",
-        "你是minimind，一个小巧但有用的语言模型。",
-        "你是一个专业的AI助手，请提供有价值的回答。",
-        "你是minimind，请尽力帮助用户解决问题。",
-        "你是一个可靠的AI，请给出准确的回答。",
-        "You are a helpful AI assistant.",
-        "You are minimind, a lightweight intelligent assistant.",
-        "You are a friendly chatbot. Please answer the user's questions carefully.",
-        "You are a knowledgeable AI. Try your best to provide accurate information.",
-        "You are minimind, a small but useful language model."
+        "당신은 지식이 풍부한 AI이며, 사용자에게 정확한 정보를 제공하기 위해 최선을 다합니다.",
+        "당신은 minimind-kr이며, 작지만 유용한 한국어 언어 모델입니다.",
+        "당신은 전문적인 AI 비서입니다. 가치 있는 답변을 제공해 주세요.",
+        "당신은 minimind-kr입니다. 사용자의 문제 해결을 최선을 다해 도와주세요.",
+        "당신은 신뢰할 수 있는 AI입니다. 정확한 답변을 제시해 주세요.",
+        "당신은 친절한 한국어 AI 챗봇입니다. 사용자의 질문에 성심껏 답해 주세요.",
+        "당신은 minimind-kr이라는 경량 한국어 지능 비서입니다.",
+        "당신은 사려 깊은 AI 비서입니다. 사용자의 질문을 주의 깊게 이해하고 답변해 주세요.",
+        "당신은 유용한 AI 비서입니다. 항상 예의 바르고 정확하게 답변해 주세요.",
+        "당신은 minimind-kr이라는 작지만 실용적인 언어 모델입니다."
     ]
-    # 概率性添加system
+    # 확률적으로 system 메시지를 추가
     if conversations[0].get('role') != 'system':
         if random.random() < add_system_ratio:
             return [{'role': 'system', 'content': random.choice(SYSTEM_PROMPTS)}] + conversations
     return conversations
 
 def post_processing_chat(prompt_content, empty_think_ratio=0.2):
-    # 以80%概率移除空思考标签
+    # 80% 확률로 빈 <think> 태그를 제거
     if '<think>\n\n</think>\n\n' in prompt_content and random.random() > empty_think_ratio:
         prompt_content = prompt_content.replace('<think>\n\n</think>\n\n', '')
     return prompt_content
@@ -111,7 +111,7 @@ class SFTDataset(Dataset):
         input_ids = self.tokenizer(prompt).input_ids[:self.max_length]
         input_ids += [self.tokenizer.pad_token_id] * (self.max_length - len(input_ids))
         labels = self.generate_labels(input_ids)
-        # # === 调试打印 ===
+        # # === 디버깅 출력 ===
         # print(f"\n--- Sample {index} ---")
         # for i, (x, y) in enumerate(zip(input_ids[:-1], labels[1:])):
         #     print(f"{i:3d}: X={self.tokenizer.decode([x])!r:16s} ---> Y={self.tokenizer.decode([input_ids[i+1]])!r:16s} label={y}")
@@ -134,8 +134,8 @@ class DPODataset(Dataset):
 
     def __getitem__(self, index):
         sample = self.samples[index]
-        chosen = sample['chosen']  # 是一个 list，里面包含若干 {role, content}
-        rejected = sample['rejected']  # 同上
+        chosen = sample['chosen']  # {role, content} 항목이 여러 개 담긴 list
+        rejected = sample['rejected']  # 동일한 형식
         chosen_prompt = self.tokenizer.apply_chat_template(
             chosen, tokenize=False, add_generation_prompt=False
         )
@@ -197,7 +197,7 @@ class RLAIFDataset(Dataset):
         super().__init__()
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.thinking_ratio = thinking_ratio  # 按概率开启 thinking
+        self.thinking_ratio = thinking_ratio  # 확률적으로 thinking 모드 활성화
         self.samples = load_dataset('json', data_files=jsonl_path, split='train')
         self.bos_id = tokenizer(f'{tokenizer.bos_token}assistant', add_special_tokens=False).input_ids
         self.eos_id = tokenizer(f'{tokenizer.eos_token}', add_special_tokens=False).input_ids
